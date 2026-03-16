@@ -108,8 +108,8 @@ def impossibleInstance' : Linter where run cmdSyntax := do
   let errorsFound1 := m!"This instance has at least one argument that cannot be \
     inferred using typeclass synthesis. Specifically\n" 
   let errorsFound2 := m!"\nThese are arguments that are not instance-implicit and \
-    appear neither in another instance-implicit argument nor the return type, so they can't \
-    be filled in by typeclass inference."
+    appear neither in another instance-implicit argument nor the return type, so they cannot \
+    be inferred using typeclass synthesis."
   let test (declName : Name) : MetaM (Option MessageData) := do
     unless ← isInstance declName do return none
     forallTelescopeReducing (← inferType (← mkConstWithLevelParams declName)) fun args ty => do
