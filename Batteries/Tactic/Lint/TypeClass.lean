@@ -105,8 +105,8 @@ def impossibleInstance' : Linter where run cmdSyntax := do
   /- todo use `withSetOptionIn` after `https://github.com/leanprover/lean4/pull/11313` has
      been resolved, to allow disabling this linter with
      `set_option linter.impossibleInstance' false in`. -/
-  let errorsFound1 := m!"This instance has at least one argument that is impossible \
-    to infer for typeclass inference. Specifically\n"
+  let errorsFound1 := m!"This instance has at least one argument that cannot be \
+    inferred using typeclass synthesis. Specifically\n" 
   let errorsFound2 := m!"\nThese are arguments that are not instance-implicit and \
     appear neither in another instance-implicit argument nor the return type, so they can't \
     be filled in by typeclass inference."
