@@ -63,7 +63,7 @@ end environmentLinters
 section StandardLinters
 
 /-- This function searches laterally to find the top level names of declarations (along with their
-    syntax). Thanks Thomas Murrills!
+    syntax).
     Note: This function picks up some internal names from e.g. `examples` (like `bla._example`)
     that it probably shouldn't. You should probably filter these using `(← getEnv).contains name`.
 -/
