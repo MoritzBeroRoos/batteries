@@ -62,8 +62,11 @@ end environmentLinters
 
 section StandardLinters
 
-/-- This function searches laterally to find the top level names of declarations (along with their
-    syntax).
+/-- This function searches the infotree to find the top level names of declarations
+    (along with their syntax).
+    If it encounters a `.ofCustomInfo` node carrying a `BodyInfo` value it tries to adds the
+    contained name and syntax to the result and stops searching this subtree.
+    If it encounters any other node, the search continues in each subtree and results are merged.
     Note: This function picks up some internal names from e.g. `examples` (like `bla._example`)
     that it probably shouldn't. You should probably filter these using `(← getEnv).contains name`.
 -/
@@ -106,7 +109,7 @@ def impossibleInstance' : Linter where run cmdSyntax := do
      been resolved, to allow disabling this linter with
      `set_option linter.impossibleInstance' false in`. -/
   let errorsFound1 := m!"This instance has at least one argument that cannot be \
-    inferred using typeclass synthesis. Specifically\n" 
+    inferred using typeclass synthesis. Specifically\n"
   let errorsFound2 := m!"\nThese are arguments that are not instance-implicit and \
     appear neither in another instance-implicit argument nor the return type, so they cannot \
     be inferred using typeclass synthesis."
