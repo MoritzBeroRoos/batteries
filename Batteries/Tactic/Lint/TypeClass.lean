@@ -22,7 +22,7 @@ open Lean Meta
 /--
 Lints for instances with arguments that cannot be filled in, like
 ```
-instance {α β : Type} [Group α] : Mul α where ...
+instance impossible {α β : Type} [Inhabited α] : Nonempty α := ⟨default⟩
 ```
 -/
 @[env_linter] def impossibleInstance : Linter where
@@ -98,7 +98,7 @@ register_option linter.impossibleInstance' : Bool := {
 /--
 Lints for instances with arguments that cannot be filled in, like
 ```
-instance {α β : Type} [Group α] : Mul α where ...
+instance impossible {α β : Type} [Inhabited α] : Nonempty α := ⟨default⟩
 ```
 This is a syntax linter, i.e. it runs on your declarations as you write them.
 -/
