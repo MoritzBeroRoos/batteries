@@ -14,7 +14,7 @@ warning: This instance has at least one argument that cannot be inferred using t
     argument 2: `{β : Type}`
 These are arguments that are not instance-implicit and appear neither in another instance-implicit argument nor the return type, so they cannot be inferred using typeclass synthesis.
 
-Note: This linter can be disabled with `set_option linter.syntax.impossibleInstance' false`
+Note: This linter can be disabled with `set_option linter.syntax.impossibleInstance false`
 -/
 #guard_msgs in
 local instance impossible {α β : Type} [Inhabited α] : Nonempty α := ⟨default⟩
@@ -28,7 +28,7 @@ namespace B
 /--
 warning: This declaration should not be an instance as it is not class-valued.
 
-Note: This linter can be disabled with `set_option linter.syntax.nonClassInstance' false`
+Note: This linter can be disabled with `set_option linter.syntax.nonClassInstance false`
 -/
 #guard_msgs in
 instance bad : Nat := 1
