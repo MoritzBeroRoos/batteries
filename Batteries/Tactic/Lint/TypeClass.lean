@@ -101,7 +101,7 @@ namespace Batteries.Linter
 open Lean Elab Command Linter Std Meta
 
 /-- Option for turning the `impossibleInstance` linter on and off. -/
-register_option linter.syntax.impossibleInstance : Bool := {
+register_option linter.impossibleInstance : Bool := {
   defValue := true
   descr := "Warn when an instance is found that can never be synthesized by typeclass synthesis."
 }
@@ -115,7 +115,7 @@ instance impossible {α β : Type} [Inhabited α] : Nonempty α := ⟨default⟩
 This is a syntax linter, i.e. it runs on your declarations as you write them.
 -/
 def syntax.impossibleInstance : Linter where run cmdSyntax := do
-  unless Linter.getLinterValue linter.syntax.impossibleInstance (← Linter.getLinterOptions) do
+  unless Linter.getLinterValue linter.impossibleInstance (← Linter.getLinterOptions) do
     return
   if (← get).messages.hasErrors then
     return
@@ -157,12 +157,12 @@ def syntax.impossibleInstance : Linter where run cmdSyntax := do
     /- Now the actual linting check: -/
     let some lintmessage ← liftTermElabM (test name) | continue
     /- Use the range that actually corresponds to the `name` not to the whole mutual block: -/
-    Linter.logLint linter.syntax.impossibleInstance stx lintmessage
+    Linter.logLint linter.impossibleInstance stx lintmessage
   return
 initialize addLinter syntax.impossibleInstance
 
 /-- Option for turning the `nonClassInstance` linter on and off. -/
-register_option linter.syntax.nonClassInstance : Bool := {
+register_option linter.nonClassInstance : Bool := {
   defValue := true
   descr := "Warn when a declaration is found whose type is not a class but is marked as instance. "
 }
@@ -171,7 +171,7 @@ register_option linter.syntax.nonClassInstance : Bool := {
 A linter for checking if any declaration whose type is not a class is marked as an instance.
 -/
 def syntax.nonClassInstance : Linter where run cmdSyntax := do
-  unless Linter.getLinterValue linter.syntax.nonClassInstance (← Linter.getLinterOptions) do
+  unless Linter.getLinterValue linter.nonClassInstance (← Linter.getLinterOptions) do
     return
   if (← get).messages.hasErrors then
     return
@@ -190,7 +190,7 @@ def syntax.nonClassInstance : Linter where run cmdSyntax := do
   let names ← Lean.Elab.getInfoTreesDecls
   for (name, stx) in names do
     let some lintmessage ← liftTermElabM (test name) | continue
-    Linter.logLint linter.syntax.nonClassInstance stx lintmessage
+    Linter.logLint linter.nonClassInstance stx lintmessage
   return
 
 initialize addLinter syntax.nonClassInstance
