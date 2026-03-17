@@ -62,11 +62,9 @@ end environmentLinters
 
 section StandardLinters
 
-/-- This function searches the infotree to find the top level names of declarations
-    (along with their syntax).
-    If it encounters a `.ofCustomInfo` node carrying a `BodyInfo` value it tries to adds the
-    contained name and syntax to the result and stops searching this subtree.
-    If it encounters any other node, the search continues in each subtree and results are merged.
+/-- `getTopLevelDeclsByBody tree` returns the top level names of declarations (along with their syntax) which have been logged in the infotree `tree`.
+
+Specifically, this function collects the contained names and syntax for all nodes with a `BodyInfo` value.
     Note: This function picks up some internal names from e.g. `examples` (like `bla._example`)
     that it probably shouldn't. You should probably filter these using `(← getEnv).contains name`.
 -/
