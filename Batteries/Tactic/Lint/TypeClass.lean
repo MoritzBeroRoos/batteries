@@ -65,8 +65,20 @@ section StandardLinters
 /-- `getTopLevelDeclsByBody tree` returns the top level names of declarations (along with their syntax) which have been logged in the infotree `tree`.
 
 Specifically, this function collects the contained names and syntax for all nodes with a `BodyInfo` value.
-    Note: This function picks up some internal names from e.g. `examples` (like `bla._example`)
-    that it probably shouldn't. You should probably filter these using `(← getEnv).contains name`.
+/-- `getInfoTreesDecls` returns the top-level names and syntax declarations made by the current command,
+based on `BodyInfo` nodes in the infotree data.
+
+Each name is only returned once.
+This function filters out declarations appearing in the infotree that do not appear in the environment.
+-/
+partial def Lean.Elab.getInfoTreesDecls : Command.CommandElabM (List (Name × Syntax)) := do
+  let names := (← getInfoTrees).toList.flatMap (·.getTopLevelDeclsByBody)
+  /- Each name shall only be checked once, so we remove duplicates. -/
+  let names := names.pwFilter (fun (a, _) (b, _) => a != b)
+  /- the `getTopLevelDeclsByBody` function picks up some internal names from `examples` that it
+     probably shouldn't. We filter these here. -/
+  let env ← getEnv
+  return names.filter fun (name, _) => env.contains name
 -/
 partial def Lean.Elab.InfoTree.getTopLevelDeclsByBody : InfoTree → List (Name × Syntax) :=
   go none []
