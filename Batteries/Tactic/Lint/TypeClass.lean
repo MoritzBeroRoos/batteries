@@ -98,6 +98,18 @@ partial def Lean.Elab.getInfoTreesDecls : Command.CommandElabM (List (Name × Sy
 
 
 
+open Lean Meta in
+/-- Returns the pretty-printed form of a free variable with its type,
+    using the appropriate brackets for its `BinderInfo`.
+    Example output: `{α : Type}`. -/
+def ppFVar (fv : FVarId) : MetaM MessageData := do
+  let decl ← fv.getDecl
+  let (lBracket, rBracket) : String × String := match decl.binderInfo with
+    | .implicit       => ("{", "}")
+    | .strictImplicit => ("⦃", "⦄")
+    | .instImplicit   => ("[", "]")
+    | .default        => ("(", ")")
+  return s!"`{lBracket}{decl.userName} : {← inferType (mkFVar fv)}{rBracket}`"
 
 
 namespace Batteries.Linter
@@ -139,13 +151,7 @@ def syntax.impossibleInstance : Linter where run cmdSyntax := do
       if (← fv.getDecl).binderInfo.isInstImplicit then return none
       if ty.containsFVar fv then return none
       if argTys[i+1:].any (·.containsFVar fv) then return none
-      let brackets : String × String := match (← fv.getDecl).binderInfo with
-        | .implicit        => ("{", "}")
-        | .strictImplicit  => ("⦃", "⦄")
-        | .instImplicit    => ("[", "]")
-        | .default         => ("(", ")")
-      return some (m!"    argument {i+1}: "
-        ++ s!"`{brackets.1}{←fv.getUserName} : {← inferType arg}{brackets.2}`")
+      return some (m!"    argument {i+1}: " ++ (← ppFVar fv))
     if impossibleArgs.isEmpty then return none
     return errorsFound1 ++ (Lean.MessageData.joinSep impossibleArgs.toList ", ") ++ errorsFound2
   /- We do the check for each (different) top level instance name we can get from the infotrees.
