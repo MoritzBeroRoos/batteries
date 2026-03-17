@@ -64,7 +64,20 @@ section StandardLinters
 
 /-- `getTopLevelDeclsByBody tree` returns the top level names of declarations (along with their syntax) which have been logged in the infotree `tree`.
 
-Specifically, this function collects the contained names and syntax for all nodes with a `BodyInfo` value.
+Specifically, this function collects the contained names and syntax for all nodes with a `BodyInfo` value. -/
+partial def Lean.Elab.InfoTree.getTopLevelDeclsByBody : InfoTree → List (Name × Syntax) :=
+  go none []
+where
+  go (ctx? : Option ContextInfo) (acc : List (Name × Syntax)) : InfoTree → List (Name × Syntax)
+    | context ctx t => go (ctx.mergeIntoOuter? ctx?) acc t
+    | node i ts => Id.run do
+      if let .ofCustomInfo i := i then
+        if i.value.typeName == ``Lean.Elab.Term.BodyInfo then
+          if let some decl := ctx?.bind (·.parentDecl?) then
+            return (decl, i.stx) :: acc -- don't descend into `ts`
+      ts.foldl (init := acc) (go ctx?)
+    | hole _ => acc
+
 /-- `getInfoTreesDecls` returns the top-level names and syntax declarations made by the current command,
 based on `BodyInfo` nodes in the infotree data.
 
@@ -79,19 +92,8 @@ partial def Lean.Elab.getInfoTreesDecls : Command.CommandElabM (List (Name × Sy
      probably shouldn't. We filter these here. -/
   let env ← getEnv
   return names.filter fun (name, _) => env.contains name
--/
-partial def Lean.Elab.InfoTree.getTopLevelDeclsByBody : InfoTree → List (Name × Syntax) :=
-  go none []
-where
-  go (ctx? : Option ContextInfo) (acc : List (Name × Syntax)) : InfoTree → List (Name × Syntax)
-    | context ctx t => go (ctx.mergeIntoOuter? ctx?) acc t
-    | node i ts => Id.run do
-      if let .ofCustomInfo i := i then
-        if i.value.typeName == ``Lean.Elab.Term.BodyInfo then
-          if let some decl := ctx?.bind (·.parentDecl?) then
-            return (decl, i.stx) :: acc -- don't descend into `ts`
-      ts.foldl (init := acc) (go ctx?)
-    | hole _ => acc
+
+
 
 
 
@@ -145,14 +147,7 @@ def syntax.impossibleInstance : Linter where run cmdSyntax := do
     return errorsFound1 ++ (Lean.MessageData.joinSep impossibleArgs.toList ", ") ++ errorsFound2
   /- We do the check for each (different) top level instance name we can get from the infotrees.
      Mostly this will only be one name, but for `mutual` blocks this will be more. -/
-  let names := (← getInfoTrees).toList.flatMap (·.getTopLevelDeclsByBody)
-  /- Each name shall only be checked once, so we remove duplicates. -/
-  let names := names.pwFilter (fun (a, _) (b, _) => a != b)
-  /- the `getTopLevelDeclsByBody` function picks up some internal names from `examples` that it
-     probably shouldn't. We filter these here. -/
-  let env ← getEnv
-  let names := names.filter fun (name, _) => env.contains name
-  -- names := names.eraseDups -- todo only first elements duplicate remove
+  let names ← Lean.Elab.getInfoTreesDecls
   for (name, stx) in names do
     /- If the return type is not class valued (but an instance), the `nonClassInstance'`
        linter will already put a message on this declaration, so we skip it here in that case.
@@ -192,14 +187,7 @@ def syntax.nonClassInstance : Linter where run cmdSyntax := do
     return none
   /- We do the check for each (different) top level instance name we can get from the infotrees.
      Mostly this will only be one name, but for `mutual` blocks this will be more. -/
-  let mut names : List (Name × Syntax) := []
-  for t in ←getInfoTrees do
-    names := t.getTopLevelDeclsByBody ++ names
-  /- Each name shall only be checked once, so we remove duplicates. -/
-  names := names.pwFilter (fun (a, _) (b, _) => a != b)
-  /- the `getTopLevelDeclsByBody` function picks up some internal names from `examples` that it
-     probably shouldn't. We filter these here. -/
-  names := (← names.filterM (fun (name, _) => return (← getEnv).contains name))
+  let names ← Lean.Elab.getInfoTreesDecls
   for (name, stx) in names do
     let some lintmessage ← liftTermElabM (test name) | continue
     Linter.logLint linter.syntax.nonClassInstance stx lintmessage
