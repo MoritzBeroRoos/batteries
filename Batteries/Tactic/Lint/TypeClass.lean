@@ -133,14 +133,13 @@ def syntax.impossibleInstance : Linter where run cmdSyntax := do
     return errorsFound1 ++ (Lean.MessageData.joinSep impossibleArgs.toList ", ") ++ errorsFound2
   /- We do the check for each (different) top level instance name we can get from the infotrees.
      Mostly this will only be one name, but for `mutual` blocks this will be more. -/
-  let mut names : List (Name × Syntax) := []
-  for t in ←getInfoTrees do
-    names := t.getTopLevelDeclsByBody ++ names
+  let names := (← getInfoTrees).toList.flatMap (·.getTopLevelDeclsByBody)
   /- Each name shall only be checked once, so we remove duplicates. -/
-  names := names.pwFilter (fun (a, _) (b, _) => a != b)
+  let names := names.pwFilter (fun (a, _) (b, _) => a != b)
   /- the `getTopLevelDeclsByBody` function picks up some internal names from `examples` that it
      probably shouldn't. We filter these here. -/
-  names := (← names.filterM (fun (name, _) => return (← getEnv).contains name))
+  let env ← getEnv
+  let names := names.filter fun (name, _) => env.contains name
   -- names := names.eraseDups -- todo only first elements duplicate remove
   for (name, stx) in names do
     /- check if the return type is class-valued,
