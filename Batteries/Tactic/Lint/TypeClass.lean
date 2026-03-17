@@ -103,6 +103,8 @@ This is a syntax linter, i.e. it runs on your declarations as you write them.
 def syntax.impossibleInstance : Linter where run cmdSyntax := do
   unless Linter.getLinterValue linter.syntax.impossibleInstance (← Linter.getLinterOptions) do
     return
+   if (← get).messages.hasErrors then
+    return
   /- todo use `withSetOptionIn` after `https://github.com/leanprover/lean4/pull/11313` has
      been resolved, to allow disabling this linter with
      `set_option linter.syntax.impossibleInstance false in`. -/
