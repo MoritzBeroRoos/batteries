@@ -142,8 +142,9 @@ def syntax.impossibleInstance : Linter where run cmdSyntax := do
   let names := names.filter fun (name, _) => env.contains name
   -- names := names.eraseDups -- todo only first elements duplicate remove
   for (name, stx) in names do
-    /- check if the return type is class-valued,
-       else the `nonClassInstance'` linter will lint against this. -/
+    /- If the return type is not class valued (but an instance), the `nonClassInstance'`
+       linter will already put a message on this declaration, so we skip it here in that case.
+       If the declaration is not an instance it is skipped in `test`.  -/
     let constInfo ← (Lean.getConstInfo name)
     if not (← liftTermElabM (isClass? constInfo.type)).isSome then continue
     /- Now the actual linting check: -/
