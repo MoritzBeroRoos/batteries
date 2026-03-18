@@ -66,35 +66,36 @@ section StandardLinters
     (along with their syntax) which have been logged in the infotree `tree`.
 
     Specifically, this function collects the contained names and syntax for all nodes
-    with a `BodyInfo` value. -/
-partial def Lean.Elab.InfoTree.getTopLevelDeclsByBody : InfoTree → List (Name × Syntax) :=
-  go none []
+    with a `BodyInfo` value.
+    Since we return a `NameMap Syntax`, each name is only returned once.-/
+partial def Lean.Elab.InfoTree.getTopLevelDeclsByBody : InfoTree → NameMap Syntax :=
+  go none {}
 where
-  go (ctx? : Option ContextInfo) (acc : List (Name × Syntax)) : InfoTree → List (Name × Syntax)
+  go (ctx? : Option ContextInfo) (acc : NameMap Syntax) : InfoTree → NameMap Syntax
     | context ctx t => go (ctx.mergeIntoOuter? ctx?) acc t
     | node i ts => Id.run do
       if let .ofCustomInfo i := i then
         if i.value.typeName == ``Lean.Elab.Term.BodyInfo then
           if let some decl := ctx?.bind (·.parentDecl?) then
-            return (decl, i.stx) :: acc -- don't descend into `ts`
+            return acc.insertIfNew decl i.stx -- don't descend into `ts`
       ts.foldl (init := acc) (go ctx?)
     | hole _ => acc
 
 /-- `getInfoTreesDecls` returns the top-level names and syntax declarations made by
     the current command, based on `BodyInfo` nodes in the infotree data.
 
-    Each name is only returned once.
     This function filters out declarations appearing in the infotree that do not appear
     in the environment.
+    Since we return a `NameMap Syntax`, each name is only returned once.
 -/
-partial def Lean.Elab.getInfoTreesDecls : Command.CommandElabM (List (Name × Syntax)) := do
-  let names := (← getInfoTrees).toList.flatMap (·.getTopLevelDeclsByBody)
-  /- Each name shall only be checked once, so we remove duplicates. -/
-  let names := names.pwFilter (fun (a, _) (b, _) => a != b)
+partial def Lean.Elab.getInfoTreesDecls : Command.CommandElabM (NameMap Syntax) := do
+  let mut names : NameMap Syntax := {}
+  for t in (← getInfoTrees) do
+    names := Std.TreeMap.mergeWith (fun _ s _ => s) names t.getTopLevelDeclsByBody
   /- the `getTopLevelDeclsByBody` function picks up some internal names from `examples` that it
      probably shouldn't. We filter these here. -/
   let env ← getEnv
-  return names.filter fun (name, _) => env.contains name
+  return names.filter (fun name _ ↦ env.contains name)
 
 
 
