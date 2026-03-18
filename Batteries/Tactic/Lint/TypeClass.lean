@@ -95,7 +95,7 @@ partial def Lean.Elab.getInfoTreesDecls : Command.CommandElabM (NameMap Syntax) 
   /- the `getTopLevelDeclsByBody` function picks up some internal names from `examples` that it
      probably shouldn't. We filter these here. -/
   let env ← getEnv
-  return names.filter (fun name _ ↦ env.contains name)
+  return names.filter (fun name _ => env.contains name)
 
 
 
