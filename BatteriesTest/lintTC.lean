@@ -21,6 +21,18 @@ local instance impossible {α β : Type} [Inhabited α] : Nonempty α := ⟨defa
 
 run_meta guard (← impossibleInstance.test ``impossible).isSome
 
+-- The following tests that the impossibleInstance syntax and environment linter
+-- only fire on instances. So the following theorem should not be linted by them.
+/--
+warning: unused variable `β`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+-/
+#guard_msgs in
+theorem okayAsThm {α β : Type} [Inhabited α] : Nonempty α := ⟨default⟩
+
+run_meta guard (← impossibleInstance.test ``okayAsThm).isNone
+
 end A
 
 namespace B
