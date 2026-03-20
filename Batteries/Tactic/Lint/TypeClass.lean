@@ -103,7 +103,7 @@ open Lean Meta in
 /-- Returns the pretty-printed form of a free variable with its type,
     using the appropriate brackets for its `BinderInfo`.
     Example output: `{α : Type}`. -/
-def ppFVar (fv : FVarId) : MetaM MessageData := do
+def Batteries.Linter.ppFVar (fv : FVarId) : MetaM MessageData := do
   let decl ← fv.getDecl
   let (lBracket, rBracket) : String × String := match decl.binderInfo with
     | .implicit       => ("{", "}")
@@ -205,4 +205,3 @@ def nonClassInstance : Linter where run cmdSyntax := do
 initialize addLinter nonClassInstance
 
 end Batteries.Linter
-
