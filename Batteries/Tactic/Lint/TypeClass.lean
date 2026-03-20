@@ -14,7 +14,7 @@ public meta import Batteries.Data.List.Basic
 
 public meta section
 
-section environmentLinters
+/-! ### Environment Linters -/
 
 namespace Batteries.Tactic.Lint
 open Lean Meta
@@ -56,11 +56,11 @@ A linter for checking if any declaration whose type is not a class is marked as 
     return none
 
 end Batteries.Tactic.Lint
-end environmentLinters
 
 
 
-section StandardLinters
+
+/-! ### Syntax Linters -/
 
 /-- `getTopLevelDeclsByBody tree` returns the top level names of declarations
     (along with their syntax) which have been logged in the infotree `tree`.
@@ -205,4 +205,4 @@ def nonClassInstance : Linter where run cmdSyntax := do
 initialize addLinter nonClassInstance
 
 end Batteries.Linter
-end StandardLinters
+
