@@ -110,7 +110,7 @@ def ppFVar (fv : FVarId) : MetaM MessageData := do
     | .strictImplicit => ("⦃", "⦄")
     | .instImplicit   => ("[", "]")
     | .default        => ("(", ")")
-  return s!"`{lBracket}{decl.userName} : {← inferType (mkFVar fv)}{rBracket}`"
+  return m!"`{lBracket}{decl.userName} : {← inferType (mkFVar fv)}{rBracket}`"
 
 
 namespace Batteries.Linter
