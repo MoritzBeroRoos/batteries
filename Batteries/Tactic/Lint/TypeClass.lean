@@ -201,7 +201,6 @@ def nonClassInstance : Linter where run cmdSyntax := do
   for (name, stx) in names do
     let some lintmessage ← liftTermElabM (test name) | continue
     Linter.logLint linter.nonClassInstance stx lintmessage
-  return
 
 initialize addLinter nonClassInstance
 
