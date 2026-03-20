@@ -180,7 +180,7 @@ register_option linter.nonClassInstance : Bool := {
 /--
 A linter for checking if any declaration whose type is not a class is marked as an instance.
 -/
-def syntax.nonClassInstance : Linter where run cmdSyntax := do
+def nonClassInstance : Linter where run cmdSyntax := do
   unless Linter.getLinterValue linter.nonClassInstance (← Linter.getLinterOptions) do
     return
   if (← get).messages.hasErrors then
