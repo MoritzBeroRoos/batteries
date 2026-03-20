@@ -168,8 +168,8 @@ def impossibleInstance : Linter where run cmdSyntax := do
     let some lintmessage ← liftTermElabM (test name) | continue
     /- Use the range that actually corresponds to the `name` not to the whole mutual block: -/
     Linter.logLint linter.impossibleInstance stx lintmessage
-  return
-initialize addLinter syntax.impossibleInstance
+
+initialize addLinter impossibleInstance
 
 /-- Option for turning the `nonClassInstance` linter on and off. -/
 register_option linter.nonClassInstance : Bool := {
