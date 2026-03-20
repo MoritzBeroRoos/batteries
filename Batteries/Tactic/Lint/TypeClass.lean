@@ -203,7 +203,7 @@ def nonClassInstance : Linter where run cmdSyntax := do
     Linter.logLint linter.nonClassInstance stx lintmessage
   return
 
-initialize addLinter syntax.nonClassInstance
+initialize addLinter nonClassInstance
 
 end Batteries.Linter
 end StandardLinters
