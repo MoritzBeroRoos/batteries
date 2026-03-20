@@ -130,7 +130,7 @@ instance impossible {α β : Type} [Inhabited α] : Nonempty α := ⟨default⟩
 ```
 This is a syntax linter, i.e. it runs on your declarations as you write them.
 -/
-def syntax.impossibleInstance : Linter where run cmdSyntax := do
+def impossibleInstance : Linter where run cmdSyntax := do
   unless Linter.getLinterValue linter.impossibleInstance (← Linter.getLinterOptions) do
     return
   if (← get).messages.hasErrors then
