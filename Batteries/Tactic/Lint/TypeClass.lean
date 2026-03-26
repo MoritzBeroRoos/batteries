@@ -77,23 +77,18 @@ where
       ts.foldl (init := acc) (go ctx?)
     | hole _ => acc
 
-/-- `getInfoTreesDecls` returns the top-level names and syntax declarations made by
-    the current command, based on `BodyInfo` nodes in the infotree data.
+/-- `getTopLevelInfoTreesDecls` returns the top-level declarations
 
-    This function filters out declarations appearing in the infotree that do not appear
-    in the environment.
-    Since we return a `NameMap Syntax`, each name is only returned once.
--/
-partial def Lean.Elab.getInfoTreesDecls : Command.CommandElabM (NameMap Syntax) := do
-  let mut names : NameMap Syntax := {}
+This function filters out declarations appearing in the infotree that do not appear
+in the environment. Since we return a `NameMap Syntax`, each name is only returned once. -/
+partial def Lean.Elab.getTopLevelInfoTreesDecls : Command.CommandElabM NameSet := do
+  let mut names : NameSet := {}
   for t in (← getInfoTrees) do
-    names := Std.TreeMap.mergeWith (fun _ s _ => s) names t.getTopLevelDeclsByBody
+    names := names ∪ t.getTopLevelDeclsByBody
   /- the `getTopLevelDeclsByBody` function picks up some internal names from `examples` that it
-     probably shouldn't. We filter these here. -/
+  probably shouldn't. We filter these here. -/
   let env ← getEnv
-  return names.filter (fun name _ => env.contains name)
-
-
+  return names.filter env.contains
 
 open Lean Meta in
 /-- Returns the pretty-printed form of a free variable with its type,
