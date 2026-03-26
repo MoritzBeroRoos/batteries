@@ -59,22 +59,21 @@ end Batteries.Tactic.Lint
 
 /-! ### Syntax Linters -/
 
-/-- `getTopLevelDeclsByBody tree` returns the top level names of declarations
-    (along with their syntax) which have been logged in the infotree `tree`.
+/-- `t.getTopLevelDeclsByBody` returns the names of top level declarations which have recorded some
+`BodyInfo` in the infotree `t`. This therefore excludes `let rec` and other auxiliary definitions.
 
-    Specifically, this function collects the contained names and syntax for all nodes
-    with a `BodyInfo` value.
-    Since we return a `NameMap Syntax`, each name is only returned once.-/
-partial def Lean.Elab.InfoTree.getTopLevelDeclsByBody : InfoTree → NameMap Syntax :=
+Specifically, this function collects the contained names and syntax for all nodes
+with a `BodyInfo` value. Since we return a `NameSet`, each name is only returned once. -/
+partial def Lean.Elab.InfoTree.getTopLevelDeclsByBody : InfoTree → NameSet :=
   go none {}
 where
-  go (ctx? : Option ContextInfo) (acc : NameMap Syntax) : InfoTree → NameMap Syntax
+  go (ctx? : Option ContextInfo) (acc : NameSet) : InfoTree → NameSet
     | context ctx t => go (ctx.mergeIntoOuter? ctx?) acc t
     | node i ts => Id.run do
       if let .ofCustomInfo i := i then
         if i.value.typeName == ``Lean.Elab.Term.BodyInfo then
           if let some decl := ctx?.bind (·.parentDecl?) then
-            return acc.insertIfNew decl i.stx -- don't descend into `ts`
+            return acc.insert decl -- don't descend into `ts`
       ts.foldl (init := acc) (go ctx?)
     | hole _ => acc
 
