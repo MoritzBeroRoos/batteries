@@ -57,9 +57,6 @@ A linter for checking if any declaration whose type is not a class is marked as 
 
 end Batteries.Tactic.Lint
 
-
-
-
 /-! ### Syntax Linters -/
 
 /-- `getTopLevelDeclsByBody tree` returns the top level names of declarations
