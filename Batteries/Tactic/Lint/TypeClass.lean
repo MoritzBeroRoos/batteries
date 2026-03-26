@@ -129,36 +129,34 @@ def impossibleInstance : Linter where run cmdSyntax := do
   /- todo use `withSetOptionIn` after `https://github.com/leanprover/lean4/pull/11313` has
      been resolved, to allow disabling this linter with
      `set_option linter.syntax.impossibleInstance false in`. -/
-  let errorsFound1 := m!"This instance has at least one argument that cannot be \
-    inferred using typeclass synthesis. Specifically\n"
-  let errorsFound2 := m!"\nThese are arguments that are not instance-implicit and \
-    appear neither in another instance-implicit argument nor the return type, so they cannot \
-    be inferred using typeclass synthesis."
-  let test (declName : Name) : MetaM (Option MessageData) := do
-    unless ← isInstance declName do return none
-    forallTelescopeReducing (← inferType (← mkConstWithLevelParams declName)) fun args ty => do
-    let argTys ← args.mapM inferType
-    let impossibleArgs ← args.zipIdx.filterMapM fun (arg, i) => do
-      let fv := arg.fvarId!
-      if (← fv.getDecl).binderInfo.isInstImplicit then return none
-      if ty.containsFVar fv then return none
-      if argTys[i+1:].any (·.containsFVar fv) then return none
-      return some (m!"    argument {i+1}: " ++ (← ppFVar fv))
-    if impossibleArgs.isEmpty then return none
-    return errorsFound1 ++ (Lean.MessageData.joinSep impossibleArgs.toList ", ") ++ errorsFound2
-  /- We do the check for each (different) top level instance name we can get from the infotrees.
-     Mostly this will only be one name, but for `mutual` blocks this will be more. -/
-  let names ← Lean.Elab.getInfoTreesDecls
-  for (name, stx) in names do
-    /- If the return type is not class valued (but an instance), the `nonClassInstance'`
-       linter will already put a message on this declaration, so we skip it here in that case.
-       If the declaration is not an instance it is skipped in `test`.  -/
-    let constInfo ← (Lean.getConstInfo name)
-    if not (← liftTermElabM (isClass? constInfo.type)).isSome then continue
-    /- Now the actual linting check: -/
-    let some lintmessage ← liftTermElabM (test name) | continue
-    /- Use the range that actually corresponds to the `name` not to the whole mutual block: -/
-    Linter.logLint linter.impossibleInstance stx lintmessage
+  let names ← getTopLevelInfoTreesDecls
+  unless names.isEmpty do liftTermElabM do
+    /- We do the check for each (different) top level instance name we can get from the infotrees.
+      Mostly this will only be one name, but for `mutual` blocks this will be more. -/
+    for declName in names do
+      /- If the return type is not class valued (but an instance), the `nonClassInstance'`
+        linter will already put a message on this declaration, so we skip it here in that case.
+        If the declaration is not an instance it is skipped in `test`.  -/
+      let constInfo ← (Lean.getConstInfo declName)
+      if not (← (isClass? constInfo.type)).isSome then continue
+      /- Now the actual linting check: -/
+      unless ← isInstance declName do continue
+      forallTelescopeReducing (← inferType (← mkConstWithLevelParams declName)) fun args ty => do
+        let argTys ← liftM <| args.mapM inferType
+        let impossibleArgs ← args.zipIdx.filterMapM fun (arg, i) => do
+          let fv := arg.fvarId!
+          if (← fv.getDecl).binderInfo.isInstImplicit then return none
+          if ty.containsFVar fv then return none
+          if argTys[i+1:].any (·.containsFVar fv) then return none
+          return some (m!"    argument {i+1}: " ++ (← ppFVar fv))
+        if impossibleArgs.isEmpty then return
+        Linter.logLint linter.impossibleInstance (← getRef) m!"\
+          This instance has at least one argument that cannot be \
+          inferred using typeclass synthesis. Specifically\n\
+          {.joinSep impossibleArgs.toList ", "}\n\
+          These are arguments that are not instance-implicit and \
+          appear neither in another instance-implicit argument nor the return type, so they cannot \
+          be inferred using typeclass synthesis."
 
 initialize addLinter impossibleInstance
 
