@@ -14,10 +14,11 @@ public meta import Batteries.Data.List.Basic
 
 public meta section
 
+open Lean Meta Elab Command
+
 /-! ### Environment Linters -/
 
 namespace Batteries.Tactic.Lint
-open Lean Meta
 
 /--
 Lints for instances with arguments that cannot be filled in, like
