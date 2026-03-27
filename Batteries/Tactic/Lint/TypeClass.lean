@@ -114,7 +114,8 @@ protected def Lean.FVarId.ppAsBinder (fvarId : FVarId) : MetaM (Option MessageDa
   return (← fvarId.getDecl).ppAsBinder
 
 namespace Batteries.Linter
-open Lean Elab Command Linter Std Meta
+
+open Linter Std
 
 /-- Option for turning the `impossibleInstance` linter on and off. -/
 register_option linter.impossibleInstance : Bool := {
