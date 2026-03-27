@@ -130,7 +130,7 @@ Lints for instances with arguments that cannot be filled in, like
 instance impossible {α β : Type} [Inhabited α] : Nonempty α := ⟨default⟩
 ```
 -/
-def impossibleInstance : Linter where run cmdSyntax := do
+def impossibleInstance : Linter where run _ := do
   unless getLinterValue linter.impossibleInstance (← getLinterOptions) do
     return
   if ← MonadLog.hasErrors then
@@ -178,7 +178,7 @@ register_option linter.nonClassInstance : Bool := {
 /--
 A linter for checking if any declaration whose type is not a class is marked as an instance.
 -/
-def nonClassInstance : Linter where run cmdSyntax := do
+def nonClassInstance : Linter where run _ := do
   unless getLinterValue linter.nonClassInstance (← getLinterOptions) do
     return
   if ← MonadLog.hasErrors then
