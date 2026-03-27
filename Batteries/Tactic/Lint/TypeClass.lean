@@ -88,8 +88,7 @@ partial def Lean.Elab.getTopLevelInfoTreesDecls : CommandElabM NameSet := do
     names := names ∪ t.getTopLevelDeclsByBody
   /- the `getTopLevelDeclsByBody` function picks up some internal names from `examples` that it
   probably shouldn't. We filter these here. -/
-  let env ← getEnv
-  return names.filter env.contains
+  return names.filter (← getEnv).contains
 
 /-- Pretty-prints a local declaration and its type as a binder,
 using the appropriate brackets given its `BinderInfo`. Example output: `{α : Type}`.
