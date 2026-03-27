@@ -131,9 +131,9 @@ instance impossible {α β : Type} [Inhabited α] : Nonempty α := ⟨default⟩
 ```
 -/
 def impossibleInstance : Linter where run cmdSyntax := do
-  unless Linter.getLinterValue linter.impossibleInstance (← Linter.getLinterOptions) do
+  unless getLinterValue linter.impossibleInstance (← getLinterOptions) do
     return
-  if (← get).messages.hasErrors then
+  if ← MonadLog.hasErrors then
     return
   /- TODO: use `withSetOptionIn` after `https://github.com/leanprover/lean4/pull/11313` has
   been resolved, to allow disabling this linter with
@@ -179,9 +179,9 @@ register_option linter.nonClassInstance : Bool := {
 A linter for checking if any declaration whose type is not a class is marked as an instance.
 -/
 def nonClassInstance : Linter where run cmdSyntax := do
-  unless Linter.getLinterValue linter.nonClassInstance (← Linter.getLinterOptions) do
+  unless getLinterValue linter.nonClassInstance (← getLinterOptions) do
     return
-  if (← get).messages.hasErrors then
+  if ← MonadLog.hasErrors then
     return
   /- TODO: use `withSetOptionIn` after `https://github.com/leanprover/lean4/pull/11313` has
   been resolved, to allow disabling this linter with
