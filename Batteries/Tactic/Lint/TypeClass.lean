@@ -78,10 +78,12 @@ where
       ts.foldl (init := acc) (go ctx?)
     | hole _ => acc
 
-/-- `getTopLevelInfoTreesDecls` returns the top-level declarations
+/-- `getTopLevelInfoTreesDecls` returns the names of top level declarations which have recorded some
+`BodyInfo` across all available `InfoTrees`. This therefore excludes `let rec` and other auxiliary
+definitions.
 
-This function filters out declarations appearing in the infotree that do not appear
-in the environment. Since we return a `NameMap Syntax`, each name is only returned once. -/
+This function filters out declarations that do not appear in the environment. Since we return a
+`NameSet`, each name is only returned once. -/
 partial def Lean.Elab.getTopLevelInfoTreesDecls : CommandElabM NameSet := do
   let mut names : NameSet := {}
   for t in ← getInfoTrees do
