@@ -82,9 +82,9 @@ where
 
 This function filters out declarations appearing in the infotree that do not appear
 in the environment. Since we return a `NameMap Syntax`, each name is only returned once. -/
-partial def Lean.Elab.getTopLevelInfoTreesDecls : Command.CommandElabM NameSet := do
+partial def Lean.Elab.getTopLevelInfoTreesDecls : CommandElabM NameSet := do
   let mut names : NameSet := {}
-  for t in (← getInfoTrees) do
+  for t in ← getInfoTrees do
     names := names ∪ t.getTopLevelDeclsByBody
   /- the `getTopLevelDeclsByBody` function picks up some internal names from `examples` that it
   probably shouldn't. We filter these here. -/
