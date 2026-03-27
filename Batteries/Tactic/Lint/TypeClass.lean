@@ -129,7 +129,6 @@ Lints for instances with arguments that cannot be filled in, like
 ```
 instance impossible {α β : Type} [Inhabited α] : Nonempty α := ⟨default⟩
 ```
-This is a syntax linter, i.e. it runs on your declarations as you write them.
 -/
 def impossibleInstance : Linter where run cmdSyntax := do
   unless Linter.getLinterValue linter.impossibleInstance (← Linter.getLinterOptions) do
