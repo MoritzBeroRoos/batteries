@@ -144,8 +144,8 @@ def impossibleInstance : Linter where run cmdSyntax := do
       Mostly this will only be one name, but for `mutual` blocks this will be more. -/
     for declName in names do
       /- If the return type is not class valued (but an instance), the `nonClassInstance'`
-        linter will already put a message on this declaration, so we skip it here in that case.
-        If the declaration is not an instance it is skipped in `test`.  -/
+      linter will already put a message on this declaration, so we skip it here in that case.
+      If the declaration is not an instance it is skipped in `test`.  -/
       let constInfo ← (Lean.getConstInfo declName)
       if not (← (isClass? constInfo.type)).isSome then continue
       /- Now the actual linting check: -/
