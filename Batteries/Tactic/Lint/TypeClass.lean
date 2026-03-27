@@ -90,19 +90,27 @@ partial def Lean.Elab.getTopLevelInfoTreesDecls : Command.CommandElabM NameSet :
   let env ← getEnv
   return names.filter env.contains
 
-open Lean Meta in
-/-- Returns the pretty-printed form of a free variable with its type,
-    using the appropriate brackets for its `BinderInfo`.
-    Example output: `{α : Type}`. -/
-def Batteries.Linter.ppFVar (fv : FVarId) : MetaM MessageData := do
-  let decl ← fv.getDecl
-  let (lBracket, rBracket) : String × String := match decl.binderInfo with
-    | .implicit       => ("{", "}")
-    | .strictImplicit => ("⦃", "⦄")
-    | .instImplicit   => ("[", "]")
-    | .default        => ("(", ")")
-  return m!"`{lBracket}{decl.userName} : {← inferType (mkFVar fv)}{rBracket}`"
+/-- Pretty-prints a local declaration and its type as a binder,
+using the appropriate brackets given its `BinderInfo`. Example output: `{α : Type}`.
 
+Returns `none` for let decls. -/
+protected def Lean.LocalDecl.ppAsBinder : LocalDecl → Option MessageData
+  | .ldecl .. => none
+  | .cdecl _ fvarId _ type binderInfo _ =>
+    let (lBracket, rBracket) : String × String := match binderInfo with
+      | .implicit       => ("{", "}")
+      | .strictImplicit => ("⦃", "⦄")
+      | .instImplicit   => ("[", "]")
+      | .default        => ("(", ")")
+    some <| .bracket lBracket m!"{mkFVar fvarId} : {type}" rBracket
+
+/-- Pretty-prints a free variable and its type as a binder,
+using the appropriate brackets given its `BinderInfo`. Example output: `{α : Type}`.
+
+Returns `none` for let decls. -/
+@[inline]
+protected def Lean.FVarId.ppAsBinder (fvarId : FVarId) : MetaM (Option MessageData) :=
+  return (← fvarId.getDecl).ppAsBinder
 
 namespace Batteries.Linter
 open Lean Elab Command Linter Std Meta
