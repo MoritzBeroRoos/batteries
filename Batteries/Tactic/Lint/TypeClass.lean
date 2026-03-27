@@ -123,7 +123,6 @@ register_option linter.impossibleInstance : Bool := {
   descr := "Warn when an instance is found that can never be synthesized by typeclass synthesis."
 }
 
-
 /--
 Lints for instances with arguments that cannot be filled in, like
 ```
