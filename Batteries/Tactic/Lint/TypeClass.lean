@@ -135,9 +135,9 @@ def impossibleInstance : Linter where run cmdSyntax := do
     return
   if (← get).messages.hasErrors then
     return
-  /- todo use `withSetOptionIn` after `https://github.com/leanprover/lean4/pull/11313` has
-     been resolved, to allow disabling this linter with
-     `set_option linter.syntax.impossibleInstance false in`. -/
+  /- TODO: use `withSetOptionIn` after `https://github.com/leanprover/lean4/pull/11313` has
+  been resolved, to allow disabling this linter with
+  `set_option linter.syntax.impossibleInstance false in`. -/
   let names ← getTopLevelInfoTreesDecls
   unless names.isEmpty do liftTermElabM do
     /- We do the check for each (different) top level instance name we can get from the infotrees.
@@ -183,10 +183,10 @@ def nonClassInstance : Linter where run cmdSyntax := do
     return
   if (← get).messages.hasErrors then
     return
-  /- todo use `withSetOptionIn` after `https://github.com/leanprover/lean4/pull/11313` has
-     been resolved, to allow disabling this linter with
-     `set_option linter.syntax.nonClassInstance false in`.
-     Also add an `in` to the test in `BatteriesTest.lintTC.lean`. -/
+  /- TODO: use `withSetOptionIn` after `https://github.com/leanprover/lean4/pull/11313` has
+  been resolved, to allow disabling this linter with
+  `set_option linter.syntax.nonClassInstance false in`.
+  Also add an `in` to the test in `BatteriesTest.lintTC.lean`. -/
   let test (declName : Name) : TermElabM (Option MessageData) := do
     if !(← isInstance declName) then return none
     let info ← getConstInfo declName
