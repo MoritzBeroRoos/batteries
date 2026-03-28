@@ -138,7 +138,7 @@ def impossibleInstance : Linter where run := withSetOptionIn fun cmd => do
               impossibleArgMsgs := impossibleArgMsgs.push <|
                 indentD m!"argument {i}: `{binder}`"
           if impossibleArgMsgs.isEmpty then return -- Should not be reachable.
-          -- TODO: log on a better location; see #1717
+          -- TODO: log on a better location; see #1734
           Linter.logLint linter.impossibleInstance (← getRef) m!"\
             This instance has {impossibleArgMsgs.size} \
             argument{if impossibleArgMsgs.size = 1 then "" else "s"} that cannot be \
@@ -173,7 +173,7 @@ def nonClassInstance : Linter where run := withSetOptionIn fun cmd => do
   unless decls.isEmpty do liftTermElabM do
     for decl in decls do
       unless (← isClass? (← getConstInfo decl).type).isSome do
-        -- TODO: log on a better location; see #1717
+        -- TODO: log on a better location; see #1734
         Linter.logLint linter.nonClassInstance (← getRef)
           m!"The declaration `{.ofConstName decl}` should not be an instance \
           as it is not class-valued."
