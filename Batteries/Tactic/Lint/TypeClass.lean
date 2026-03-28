@@ -162,7 +162,7 @@ register_option linter.nonClassInstance : Bool := {
 /--
 A linter for checking if any declaration whose type is not a class is marked as an instance.
 -/
-def nonClassInstance : Linter where run _ := do
+def nonClassInstance : Linter where run cmd := do
   unless getLinterValue linter.nonClassInstance (← getLinterOptions) do
     return
   if ← MonadLog.hasErrors then
@@ -171,18 +171,19 @@ def nonClassInstance : Linter where run _ := do
   been resolved, to allow disabling this linter with
   `set_option linter.syntax.nonClassInstance false in`.
   Also add an `in` to the test in `BatteriesTest.lintTC.lean`. -/
-  let test (declName : Name) : TermElabM (Option MessageData) := do
-    if !(← isInstance declName) then return none
-    let info ← getConstInfo declName
-    if !(← isClass? info.type).isSome then
-      return "This declaration should not be an instance as it is not class-valued."
-    return none
-  /- We do the check for each (different) top level instance name we can get from the infotrees.
-     Mostly this will only be one name, but for `mutual` blocks this will be more. -/
-  let names ← Lean.Elab.getInfoTreesDecls
-  for (name, stx) in names do
-    let some lintmessage ← liftTermElabM (test name) | continue
-    Linter.logLint linter.nonClassInstance stx lintmessage
+  let some pos := cmd.getPos? | return
+  let env ← getEnv
+  /- We do the check for each instance that is associated with the current command.
+  Mostly this will only be one name, but for `mutual` blocks this will be more. We use
+  `isInstanceCore` to avoid a `liftCoreM`. -/
+  let decls := pos.getDeclsAfter env (← getFileMap) |>.filter (isInstanceCore env)
+  unless decls.isEmpty do liftTermElabM do
+    for decl in decls do
+      unless (← isClass? (← getConstInfo decl).type).isSome do
+        -- TODO: log on a better location; see #1717
+        Linter.logLint linter.nonClassInstance (← getRef)
+          m!"The declaration `{.ofConstName decl}` should not be an instance \
+          as it is not class-valued."
 
 initialize addLinter nonClassInstance
 
