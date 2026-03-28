@@ -100,7 +100,7 @@ Lints for instances with arguments that cannot be filled in, like
 instance impossible {α β : Type} [Inhabited α] : Nonempty α := ⟨default⟩
 ```
 -/
-def impossibleInstance : Linter where run _ := do
+def impossibleInstance : Linter where run cmd := do
   unless getLinterValue linter.impossibleInstance (← getLinterOptions) do
     return
   if ← MonadLog.hasErrors then
@@ -108,34 +108,48 @@ def impossibleInstance : Linter where run _ := do
   /- TODO: use `withSetOptionIn` after `https://github.com/leanprover/lean4/pull/11313` has
   been resolved, to allow disabling this linter with
   `set_option linter.syntax.impossibleInstance false in`. -/
-  let names ← getTopLevelInfoTreesDecls
-  unless names.isEmpty do liftTermElabM do
-    /- We do the check for each (different) top level instance name we can get from the infotrees.
-      Mostly this will only be one name, but for `mutual` blocks this will be more. -/
-    for declName in names do
-      /- If the return type is not class valued (but an instance), the `nonClassInstance'`
-      linter will already put a message on this declaration, so we skip it here in that case.
-      If the declaration is not an instance it is skipped in `test`.  -/
-      let constInfo ← (Lean.getConstInfo declName)
-      if not (← (isClass? constInfo.type)).isSome then continue
-      /- Now the actual linting check: -/
-      unless ← isInstance declName do continue
-      forallTelescopeReducing (← inferType (← mkConstWithLevelParams declName)) fun args ty => do
-        let argTys ← liftM <| args.mapM inferType
-        let impossibleArgs ← args.zipIdx.filterMapM fun (arg, i) => do
-          let fv := arg.fvarId!
-          if (← fv.getDecl).binderInfo.isInstImplicit then return none
-          if ty.containsFVar fv then return none
-          if argTys[i+1:].any (·.containsFVar fv) then return none
-          return some (m!"    argument {i+1}: " ++ (← ppFVar fv))
-        if impossibleArgs.isEmpty then return
-        Linter.logLint linter.impossibleInstance (← getRef) m!"\
-          This instance has at least one argument that cannot be \
-          inferred using typeclass synthesis. Specifically\n\
-          {.joinSep impossibleArgs.toList ", "}\n\
-          These are arguments that are not instance-implicit and \
-          appear neither in another instance-implicit argument nor the return type, so they cannot \
-          be inferred using typeclass synthesis."
+  let some pos := cmd.getPos? | return
+  let env ← getEnv
+  /- We only consider instances created within the current command, and rely on `isInstanceCore` to
+  avoid `liftCoreM`. -/
+  let decls := pos.getDeclsAfter env (← getFileMap) |>.filter (isInstanceCore env)
+  unless decls.isEmpty do
+    /- We do the check for each instance we can find from the current command. Mostly this will
+    only be one name, but for `mutual` blocks this will be more. -/
+    for declName in decls do
+      let cinfo ← getConstInfo declName
+      -- Performantly check if any non-instance binder is unused.
+      if cinfo.type.hasUnusedForallBindersWhere fun bi _ => !bi.isInstImplicit then liftTermElabM do
+        /- If the return type is not class valued (but an instance), the `nonClassInstance`
+        linter will already put a message on this declaration, so we skip it here in that case. -/
+        if (← isClass? cinfo.type).isSome then
+        forallTelescope cinfo.type fun args ty => do
+          -- Find the fvars used in the type and any instance implicit argument, transitively.
+          let getInitialPossibleFVars := do
+            ty.collectFVars
+            for arg in args do
+              if (← arg.fvarId!.getBinderInfo).isInstImplicit then
+                /- The fvarIds in the `CollectFVars.State` should be our possible args. As such, we start by adding the instance arguments to the state, rather than computing the dependencies of their types. -/
+                modifyThe CollectFVars.State (·.add arg.fvarId!)
+          let possibleFVars ← (·.2) <$> getInitialPossibleFVars.run {}
+          -- Transitively include dependencies.
+          let possibleFVars ← possibleFVars.addDependencies
+          let mut impossibleArgMsgs := #[]
+          for arg in args, i in 1...* do
+            unless possibleFVars.fvarSet.contains arg.fvarId! do
+              let some binder ← arg.fvarId!.ppAsBinder | continue
+              impossibleArgMsgs := impossibleArgMsgs.push <|
+                indentD m!"argument {i}: `{binder}`"
+          if impossibleArgMsgs.isEmpty then return -- Should not be reachable.
+          -- TODO: log on a better location; see #1717
+          Linter.logLint linter.impossibleInstance (← getRef) m!"\
+            This instance has {impossibleArgMsgs.size} \
+            argument{if impossibleArgMsgs.size = 1 then "" else "s"} that cannot be \
+            inferred using typeclass synthesis. Specifically\n\
+            {.joinSep impossibleArgMsgs.toList .nil}\n\n\
+            These arguments are not instance-implicit and appear neither in another \
+            instance-implicit argument nor the return type, so they cannot be inferred using \
+            typeclass synthesis."
 
 initialize addLinter impossibleInstance
 
