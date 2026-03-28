@@ -11,6 +11,8 @@ public meta import Lean.Elab.Command
 public meta import Lean.Linter.Basic
 public meta import Lean.Server.InfoUtils
 public meta import Batteries.Data.List.Basic
+public meta import Batteries.Lean.Position
+public meta import Batteries.Lean.Meta.Expr
 
 public meta section
 
@@ -59,38 +61,6 @@ A linter for checking if any declaration whose type is not a class is marked as 
 end Batteries.Tactic.Lint
 
 /-! ### Syntax Linters -/
-
-/-- `t.getTopLevelDeclsByBody` returns the names of top level declarations which have recorded some
-`BodyInfo` in the infotree `t`. This therefore excludes `let rec` and other auxiliary definitions.
-
-Specifically, this function collects the contained names and syntax for all nodes
-with a `BodyInfo` value. Since we return a `NameSet`, each name is only returned once. -/
-partial def Lean.Elab.InfoTree.getTopLevelDeclsByBody : InfoTree → NameSet :=
-  go none {}
-where
-  go (ctx? : Option ContextInfo) (acc : NameSet) : InfoTree → NameSet
-    | context ctx t => go (ctx.mergeIntoOuter? ctx?) acc t
-    | node i ts => Id.run do
-      if let .ofCustomInfo i := i then
-        if i.value.typeName == ``Lean.Elab.Term.BodyInfo then
-          if let some decl := ctx?.bind (·.parentDecl?) then
-            return acc.insert decl -- don't descend into `ts`
-      ts.foldl (init := acc) (go ctx?)
-    | hole _ => acc
-
-/-- `getTopLevelInfoTreesDecls` returns the names of top level declarations which have recorded some
-`BodyInfo` across all available `InfoTrees`. This therefore excludes `let rec` and other auxiliary
-definitions.
-
-This function filters out declarations that do not appear in the environment. Since we return a
-`NameSet`, each name is only returned once. -/
-partial def Lean.Elab.getTopLevelInfoTreesDecls : CommandElabM NameSet := do
-  let mut names : NameSet := {}
-  for t in ← getInfoTrees do
-    names := names ∪ t.getTopLevelDeclsByBody
-  /- the `getTopLevelDeclsByBody` function picks up some internal names from `examples` that it
-  probably shouldn't. We filter these here. -/
-  return names.filter (← getEnv).contains
 
 /-- Pretty-prints a local declaration and its type as a binder,
 using the appropriate brackets given its `BinderInfo`. Example output: `{α : Type}`.
