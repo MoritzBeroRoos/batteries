@@ -100,14 +100,11 @@ Lints for instances with arguments that cannot be filled in, like
 instance impossible {α β : Type} [Inhabited α] : Nonempty α := ⟨default⟩
 ```
 -/
-def impossibleInstance : Linter where run cmd := do
+def impossibleInstance : Linter where run := withSetOptionIn fun cmd => do
   unless getLinterValue linter.impossibleInstance (← getLinterOptions) do
     return
   if ← MonadLog.hasErrors then
     return
-  /- TODO: use `withSetOptionIn` after `https://github.com/leanprover/lean4/pull/11313` has
-  been resolved, to allow disabling this linter with
-  `set_option linter.syntax.impossibleInstance false in`. -/
   let some pos := cmd.getPos? | return
   let env ← getEnv
   /- We only consider instances created within the current command, and rely on `isInstanceCore` to
@@ -162,15 +159,11 @@ register_option linter.nonClassInstance : Bool := {
 /--
 A linter for checking if any declaration whose type is not a class is marked as an instance.
 -/
-def nonClassInstance : Linter where run cmd := do
+def nonClassInstance : Linter where run := withSetOptionIn fun cmd => do
   unless getLinterValue linter.nonClassInstance (← getLinterOptions) do
     return
   if ← MonadLog.hasErrors then
     return
-  /- TODO: use `withSetOptionIn` after `https://github.com/leanprover/lean4/pull/11313` has
-  been resolved, to allow disabling this linter with
-  `set_option linter.syntax.nonClassInstance false in`.
-  Also add an `in` to the test in `BatteriesTest.lintTC.lean`. -/
   let some pos := cmd.getPos? | return
   let env ← getEnv
   /- We do the check for each instance that is associated with the current command.
