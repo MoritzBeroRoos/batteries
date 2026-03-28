@@ -126,7 +126,9 @@ def impossibleInstance : Linter where run := withSetOptionIn fun cmd => do
             ty.collectFVars
             for arg in args do
               if (← arg.fvarId!.getBinderInfo).isInstImplicit then
-                /- The fvarIds in the `CollectFVars.State` should be our possible args. As such, we start by adding the instance arguments to the state, rather than computing the dependencies of their types. -/
+                /- The fvarIds in the `CollectFVars.State` should be our possible args. As such, we
+                start by adding the instance arguments to the state, rather than computing the
+                dependencies of their types. -/
                 modifyThe CollectFVars.State (·.add arg.fvarId!)
           let possibleFVars ← (·.2) <$> getInitialPossibleFVars.run {}
           -- Transitively include dependencies.
