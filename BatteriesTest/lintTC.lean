@@ -24,13 +24,7 @@ local instance impossible {α β : Type} [Inhabited α] : Nonempty α := ⟨defa
 run_meta guard (← impossibleInstance.test ``impossible).isSome
 
 /--
-warning: unused variable `a`
-
-Note: This linter can be disabled with `set_option linter.unusedVariables false`
----
-warning: unused variable `h`
-
-Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: declaration uses `sorry`
 ---
 warning: This instance has 4 arguments that cannot be inferred using typeclass synthesis. Specifically
 
@@ -45,7 +39,10 @@ Note: This linter can be disabled with `set_option linter.impossibleInstance fal
 -/
 #guard_msgs in
 local instance impossibleWithChain {α β : Type} (b : Array β) (a : Array α) [Inhabited α]
-    ⦃h : b = b⦄ : Nonempty α := ⟨default⟩
+    ⦃h : b = b⦄
+    -- Note: `usedA` is a dependency of a dependency of a dependency of the return type
+    (usedA : Array α) (i : Fin usedA.size) (j : Fin i.val) :
+    Nonempty { a : Array α // a.size = j.val } := sorry
 
 -- The following tests that the impossibleInstance syntax and environment linter
 -- only fire on instances. So the following theorem should not be linted by them.
