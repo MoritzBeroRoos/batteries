@@ -11,13 +11,16 @@ public meta import Lean.Elab.Command
 public meta import Lean.Linter.Basic
 public meta import Lean.Server.InfoUtils
 public meta import Batteries.Data.List.Basic
+public meta import Batteries.Lean.Position
+public meta import Batteries.Lean.Meta.Expr
 
 public meta section
+
+open Lean Meta Elab Command
 
 /-! ### Environment Linters -/
 
 namespace Batteries.Tactic.Lint
-open Lean Meta
 
 /--
 Lints for instances with arguments that cannot be filled in, like
@@ -57,64 +60,33 @@ A linter for checking if any declaration whose type is not a class is marked as 
 
 end Batteries.Tactic.Lint
 
-
-
-
 /-! ### Syntax Linters -/
 
-/-- `getTopLevelDeclsByBody tree` returns the top level names of declarations
-    (along with their syntax) which have been logged in the infotree `tree`.
+/-- Pretty-prints a local declaration and its type as a binder,
+using the appropriate brackets given its `BinderInfo`. Example output: `{α : Type}`.
 
-    Specifically, this function collects the contained names and syntax for all nodes
-    with a `BodyInfo` value.
-    Since we return a `NameMap Syntax`, each name is only returned once.-/
-partial def Lean.Elab.InfoTree.getTopLevelDeclsByBody : InfoTree → NameMap Syntax :=
-  go none {}
-where
-  go (ctx? : Option ContextInfo) (acc : NameMap Syntax) : InfoTree → NameMap Syntax
-    | context ctx t => go (ctx.mergeIntoOuter? ctx?) acc t
-    | node i ts => Id.run do
-      if let .ofCustomInfo i := i then
-        if i.value.typeName == ``Lean.Elab.Term.BodyInfo then
-          if let some decl := ctx?.bind (·.parentDecl?) then
-            return acc.insertIfNew decl i.stx -- don't descend into `ts`
-      ts.foldl (init := acc) (go ctx?)
-    | hole _ => acc
+Returns `none` for let decls. -/
+protected def Lean.LocalDecl.ppAsBinder : LocalDecl → Option MessageData
+  | .ldecl .. => none
+  | .cdecl _ fvarId _ type binderInfo _ =>
+    let (lBracket, rBracket) : String × String := match binderInfo with
+      | .implicit       => ("{", "}")
+      | .strictImplicit => ("⦃", "⦄")
+      | .instImplicit   => ("[", "]")
+      | .default        => ("(", ")")
+    some <| .bracket lBracket m!"{mkFVar fvarId} : {type}" rBracket
 
-/-- `getInfoTreesDecls` returns the top-level names and syntax declarations made by
-    the current command, based on `BodyInfo` nodes in the infotree data.
+/-- Pretty-prints a free variable and its type as a binder,
+using the appropriate brackets given its `BinderInfo`. Example output: `{α : Type}`.
 
-    This function filters out declarations appearing in the infotree that do not appear
-    in the environment.
-    Since we return a `NameMap Syntax`, each name is only returned once.
--/
-partial def Lean.Elab.getInfoTreesDecls : Command.CommandElabM (NameMap Syntax) := do
-  let mut names : NameMap Syntax := {}
-  for t in (← getInfoTrees) do
-    names := Std.TreeMap.mergeWith (fun _ s _ => s) names t.getTopLevelDeclsByBody
-  /- the `getTopLevelDeclsByBody` function picks up some internal names from `examples` that it
-     probably shouldn't. We filter these here. -/
-  let env ← getEnv
-  return names.filter (fun name _ => env.contains name)
-
-
-
-open Lean Meta in
-/-- Returns the pretty-printed form of a free variable with its type,
-    using the appropriate brackets for its `BinderInfo`.
-    Example output: `{α : Type}`. -/
-def Batteries.Linter.ppFVar (fv : FVarId) : MetaM MessageData := do
-  let decl ← fv.getDecl
-  let (lBracket, rBracket) : String × String := match decl.binderInfo with
-    | .implicit       => ("{", "}")
-    | .strictImplicit => ("⦃", "⦄")
-    | .instImplicit   => ("[", "]")
-    | .default        => ("(", ")")
-  return m!"`{lBracket}{decl.userName} : {← inferType (mkFVar fv)}{rBracket}`"
-
+Returns `none` for let decls. -/
+@[inline]
+protected def Lean.FVarId.ppAsBinder (fvarId : FVarId) : MetaM (Option MessageData) :=
+  return (← fvarId.getDecl).ppAsBinder
 
 namespace Batteries.Linter
-open Lean Elab Command Linter Std Meta
+
+open Linter Std
 
 /-- Option for turning the `impossibleInstance` linter on and off. -/
 register_option linter.impossibleInstance : Bool := {
@@ -122,52 +94,61 @@ register_option linter.impossibleInstance : Bool := {
   descr := "Warn when an instance is found that can never be synthesized by typeclass synthesis."
 }
 
-
 /--
 Lints for instances with arguments that cannot be filled in, like
 ```
 instance impossible {α β : Type} [Inhabited α] : Nonempty α := ⟨default⟩
 ```
-This is a syntax linter, i.e. it runs on your declarations as you write them.
 -/
-def impossibleInstance : Linter where run cmdSyntax := do
-  unless Linter.getLinterValue linter.impossibleInstance (← Linter.getLinterOptions) do
+def impossibleInstance : Linter where run := withSetOptionIn fun cmd => do
+  unless getLinterValue linter.impossibleInstance (← getLinterOptions) do
     return
-  if (← get).messages.hasErrors then
+  if ← MonadLog.hasErrors then
     return
-  /- todo use `withSetOptionIn` after `https://github.com/leanprover/lean4/pull/11313` has
-     been resolved, to allow disabling this linter with
-     `set_option linter.syntax.impossibleInstance false in`. -/
-  let errorsFound1 := m!"This instance has at least one argument that cannot be \
-    inferred using typeclass synthesis. Specifically\n"
-  let errorsFound2 := m!"\nThese are arguments that are not instance-implicit and \
-    appear neither in another instance-implicit argument nor the return type, so they cannot \
-    be inferred using typeclass synthesis."
-  let test (declName : Name) : MetaM (Option MessageData) := do
-    unless ← isInstance declName do return none
-    forallTelescopeReducing (← inferType (← mkConstWithLevelParams declName)) fun args ty => do
-    let argTys ← args.mapM inferType
-    let impossibleArgs ← args.zipIdx.filterMapM fun (arg, i) => do
-      let fv := arg.fvarId!
-      if (← fv.getDecl).binderInfo.isInstImplicit then return none
-      if ty.containsFVar fv then return none
-      if argTys[i+1:].any (·.containsFVar fv) then return none
-      return some (m!"    argument {i+1}: " ++ (← ppFVar fv))
-    if impossibleArgs.isEmpty then return none
-    return errorsFound1 ++ (Lean.MessageData.joinSep impossibleArgs.toList ", ") ++ errorsFound2
-  /- We do the check for each (different) top level instance name we can get from the infotrees.
-     Mostly this will only be one name, but for `mutual` blocks this will be more. -/
-  let names ← Lean.Elab.getInfoTreesDecls
-  for (name, stx) in names do
-    /- If the return type is not class valued (but an instance), the `nonClassInstance'`
-       linter will already put a message on this declaration, so we skip it here in that case.
-       If the declaration is not an instance it is skipped in `test`.  -/
-    let constInfo ← (Lean.getConstInfo name)
-    if not (← liftTermElabM (isClass? constInfo.type)).isSome then continue
-    /- Now the actual linting check: -/
-    let some lintmessage ← liftTermElabM (test name) | continue
-    /- Use the range that actually corresponds to the `name` not to the whole mutual block: -/
-    Linter.logLint linter.impossibleInstance stx lintmessage
+  let some pos := cmd.getPos? | return
+  let env ← getEnv
+  /- We only consider instances created within the current command, and rely on `isInstanceCore` to
+  avoid `liftCoreM`. -/
+  let decls := pos.getDeclsAfter env (← getFileMap) |>.filter (isInstanceCore env)
+  unless decls.isEmpty do
+    /- We do the check for each instance we can find from the current command. Mostly this will
+    only be one name, but for `mutual` blocks this will be more. -/
+    for declName in decls do
+      let cinfo ← getConstInfo declName
+      -- Performantly check if any non-instance binder is unused.
+      if cinfo.type.hasUnusedForallBindersWhere fun bi _ => !bi.isInstImplicit then liftTermElabM do
+        /- If the return type is not class valued (but an instance), the `nonClassInstance`
+        linter will already put a message on this declaration, so we skip it here in that case. -/
+        if (← isClass? cinfo.type).isSome then
+        forallTelescope cinfo.type fun args ty => do
+          -- Find the fvars used in the type and any instance implicit argument, transitively.
+          let getInitialPossibleFVars := do
+            ty.collectFVars
+            for arg in args do
+              if (← arg.fvarId!.getBinderInfo).isInstImplicit then
+                /- The fvarIds in the `CollectFVars.State` should be our possible args. As such, we
+                start by adding the instance arguments to the state, rather than computing the
+                dependencies of their types. -/
+                modifyThe CollectFVars.State (·.add arg.fvarId!)
+          let possibleFVars ← (·.2) <$> getInitialPossibleFVars.run {}
+          -- Transitively include dependencies.
+          let possibleFVars ← possibleFVars.addDependencies
+          let mut impossibleArgMsgs := #[]
+          for arg in args, i in 1...* do
+            unless possibleFVars.fvarSet.contains arg.fvarId! do
+              let some binder ← arg.fvarId!.ppAsBinder | continue
+              impossibleArgMsgs := impossibleArgMsgs.push <|
+                indentD m!"argument {i}: `{binder}`"
+          if impossibleArgMsgs.isEmpty then return -- Should not be reachable.
+          -- TODO: log on a better location; see #1734
+          Linter.logLint linter.impossibleInstance (← getRef) m!"\
+            This instance has {impossibleArgMsgs.size} \
+            argument{if impossibleArgMsgs.size = 1 then "" else "s"} that cannot be \
+            inferred using typeclass synthesis. Specifically\n\
+            {.joinSep impossibleArgMsgs.toList .nil}\n\n\
+            These arguments are not instance-implicit and appear neither in another \
+            instance-implicit argument nor the return type, so they cannot be inferred using \
+            typeclass synthesis."
 
 initialize addLinter impossibleInstance
 
@@ -180,27 +161,24 @@ register_option linter.nonClassInstance : Bool := {
 /--
 A linter for checking if any declaration whose type is not a class is marked as an instance.
 -/
-def nonClassInstance : Linter where run cmdSyntax := do
-  unless Linter.getLinterValue linter.nonClassInstance (← Linter.getLinterOptions) do
+def nonClassInstance : Linter where run := withSetOptionIn fun cmd => do
+  unless getLinterValue linter.nonClassInstance (← getLinterOptions) do
     return
-  if (← get).messages.hasErrors then
+  if ← MonadLog.hasErrors then
     return
-  /- todo use `withSetOptionIn` after `https://github.com/leanprover/lean4/pull/11313` has
-     been resolved, to allow disabling this linter with
-     `set_option linter.syntax.nonClassInstance false in`.
-     Also add an `in` to the test in `BatteriesTest.lintTC.lean`. -/
-  let test (declName : Name) : TermElabM (Option MessageData) := do
-    if !(← isInstance declName) then return none
-    let info ← getConstInfo declName
-    if !(← isClass? info.type).isSome then
-      return "This declaration should not be an instance as it is not class-valued."
-    return none
-  /- We do the check for each (different) top level instance name we can get from the infotrees.
-     Mostly this will only be one name, but for `mutual` blocks this will be more. -/
-  let names ← Lean.Elab.getInfoTreesDecls
-  for (name, stx) in names do
-    let some lintmessage ← liftTermElabM (test name) | continue
-    Linter.logLint linter.nonClassInstance stx lintmessage
+  let some pos := cmd.getPos? | return
+  let env ← getEnv
+  /- We do the check for each instance that is associated with the current command.
+  Mostly this will only be one name, but for `mutual` blocks this will be more. We use
+  `isInstanceCore` to avoid a `liftCoreM`. -/
+  let decls := pos.getDeclsAfter env (← getFileMap) |>.filter (isInstanceCore env)
+  unless decls.isEmpty do liftTermElabM do
+    for decl in decls do
+      unless (← isClass? (← getConstInfo decl).type).isSome do
+        -- TODO: log on a better location; see #1734
+        Linter.logLint linter.nonClassInstance (← getRef)
+          m!"The declaration `{.ofConstName decl}` should not be an instance \
+          as it is not class-valued."
 
 initialize addLinter nonClassInstance
 
