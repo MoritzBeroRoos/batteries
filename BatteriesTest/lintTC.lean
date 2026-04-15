@@ -6,8 +6,8 @@ open Batteries.Tactic.Lint
 namespace A
 
 -- The following two tests test both the `impossibleInstance` linter and also that the
--- `Lean.withDeclRef?` function (used in the implementation of the linter) makes the linters warning
--- appear on the name of the declaration (if it has one) or the `instance` keyword,
+-- `Lean.withDeclRef?` function (used in the implementation of the linter) makes the
+-- linter's warning appear on the name of the declaration (if it has one) or the `instance` keyword,
 -- instead of at the beginning of the declaration's docstring.
 -- It does this by using `(positions := true)` in `guard_msgs`.
 /--
