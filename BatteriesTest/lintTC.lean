@@ -5,11 +5,18 @@ open Batteries.Tactic.Lint
 
 namespace A
 
+-- The following two tests test both the `impossibleInstance` linter and also that the
+-- `Lean.withDeclRef?` function (used in the implementation of the linter) makes the linters warning
+-- appear on the name of the declaration (if it has one) or the `instance` keyword,
+-- instead of at the beginning of the declaration's docstring.
+-- It does this by using `(positions := true)` in `guard_msgs`.
 /--
+@ +2:29...30
 warning: unused variable `β`
 
 Note: This linter can be disabled with `set_option linter.unusedVariables false`
 ---
+@ +2:15...25
 warning: This instance has 1 argument that cannot be inferred using typeclass synthesis. Specifically
 
   argument 2: `{β : Type}`
@@ -18,8 +25,29 @@ These arguments are not instance-implicit and appear neither in another instance
 
 Note: This linter can be disabled with `set_option linter.impossibleInstance false`
 -/
-#guard_msgs in
+#guard_msgs (positions := true) in
+/-- This is a doc string needed for testing the `withDeclRef` function. -/
 local instance impossible {α β : Type} [Inhabited α] : Nonempty α := ⟨default⟩
+
+-- Version of the above without a name (see comment above for why this exists).
+/--
+@ +2:18...19
+warning: unused variable `β`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+---
+@ +2:6...14
+warning: This instance has 1 argument that cannot be inferred using typeclass synthesis. Specifically
+
+  argument 2: `{β : Type}`
+
+These arguments are not instance-implicit and appear neither in another instance-implicit argument nor the return type, so they cannot be inferred using typeclass synthesis.
+
+Note: This linter can be disabled with `set_option linter.impossibleInstance false`
+-/
+#guard_msgs (positions := true) in
+/-- This is a doc string needed for testing the `withDeclRef` function. -/
+local instance {α β : Type} [Inhabited α] : Nonempty α := ⟨default⟩
 
 run_meta guard (← impossibleInstance.test ``impossible).isSome
 
@@ -107,12 +135,14 @@ set_option linter.nonClassInstance false in
 instance bad' : Nat := 1
 
 /--
+@ +3:9...19
 warning: The declaration `badControl` should not be an instance as it is not class-valued.
 
 Note: This linter can be disabled with `set_option linter.nonClassInstance false`
 -/
-#guard_msgs in
+#guard_msgs (positions := true) in
 set_option linter.nonClassInstance true in
+/-- This is a doc string needed for testing the `withDeclRef` function. -/
 instance badControl : Nat := 1
 
 end setOptionIn
