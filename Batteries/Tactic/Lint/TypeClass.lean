@@ -5,12 +5,9 @@ Authors: Gabriel Ebner, Thomas Murrills, Moritz Roos
 -/
 module
 
-public meta import Lean.Meta.Instances
-public meta import Batteries.Tactic.Lint.Basic
+public import Batteries.Tactic.Lint.Basic
+public import Lean.Linter.Basic
 public meta import Lean.Elab.Command
-public meta import Lean.Linter.Basic
-public meta import Lean.Server.InfoUtils
-public meta import Batteries.Data.List.Basic
 public meta import Batteries.Lean.Position
 public meta import Batteries.Lean.Meta.Expr
 
