@@ -88,7 +88,8 @@ namespace Batteries.Linter
 
 open Linter Std
 
-/-- Option for turning the `impossibleInstance` linter on and off. -/
+/-- The `impossibleInstance` linter flags instances that can never be synthesized by typeclass
+synthesis. Setting this option to `false` will disable this linter. -/
 register_option linter.impossibleInstance : Bool := {
   defValue := true
   descr := "Warn when an instance is found that can never be synthesized by typeclass synthesis."
@@ -152,7 +153,8 @@ def impossibleInstance : Linter where run := withSetOptionIn fun cmd => do
 
 initialize addLinter impossibleInstance
 
-/-- Option for turning the `nonClassInstance` linter on and off. -/
+/-- The `nonClassInstance` linter flags declarations marked as `instance` but whose type
+is not a class. Setting this option to `false` will disable this linter. -/
 register_option linter.nonClassInstance : Bool := {
   defValue := true
   descr := "Warn when a declaration is found whose type is not a class but is marked as instance. "
